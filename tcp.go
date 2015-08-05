@@ -33,8 +33,8 @@ type TCPHeader struct {
 	DestinationPort uint16
 	SeqNum          uint32
 	AckNum          uint32
-	DataOffset      uint8
-	Reserved        uint8
+	DataOffset      uint8 // should be either 0 or >= 5 or <=15 (default: 5)
+	Reserved        uint8 // this should always be 0
 	NS              bool
 	CWR             bool
 	ECE             bool
@@ -44,8 +44,8 @@ type TCPHeader struct {
 	RST             bool
 	SYN             bool
 	FIN             bool
-	WindowSize      uint16
-	Checksum        uint16 // Setting this to 0 tells kernel to create it
+	WindowSize      uint16 // if set to 0 this becomes 65535
+	Checksum        uint16 // suggest setting this to 0 thus offloading to the kernel
 	UrgentPointer   uint16
 }
 
@@ -123,6 +123,11 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 	// fail with a DataOffsetInvalid error
 	if tcp.DataOffset > 15 || tcp.DataOffset < 5 {
 		return nil, DataOffsetInvalid{E: "DataOffset field must be at least 5 and no more than 15"}
+	}
+
+	// if the WindowSize field is the default let's set it to something better
+	if tcp.WindowSize == 0 {
+		tcp.WindowSize = 65535
 	}
 
 	// build the DataOffset, Reserved, and Control Flags data
