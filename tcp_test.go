@@ -142,12 +142,13 @@ func (t *TestSuite) TestMarshalNoChecksum(c *C) {
 
 	data, err = t.t.MarshalNoChecksum()
 	c.Assert(err, IsNil)
-
-	r := bytes.NewReader(data)
-	e := binary.BigEndian
+	c.Assert(data, Not(IsNil))
 
 	var u32 uint32
 	var u16 uint16
+
+	r := bytes.NewReader(data)
+	e := binary.BigEndian
 
 	// SourcePort
 	c.Assert(binary.Read(r, e, &u16), IsNil)
@@ -198,6 +199,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 
 	data, err = t.t.Marshal("127.0.0.1", "127.0.0.2")
 	c.Assert(err, IsNil)
+	c.Assert(data, Not(IsNil))
 
 	var u32 uint32
 	var u16 uint16
@@ -256,6 +258,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 
 	data, err = t.t.Marshal("127.0.0.1", "127.0.0.2")
 	c.Assert(err, IsNil)
+	c.Assert(data, Not(IsNil))
 
 	r = bytes.NewReader(data)
 
@@ -318,4 +321,59 @@ func (t *TestSuite) TestMarshal(c *C) {
 	default:
 		c.Fatalf("Unexpected error type! Should be packets.DataOffset was '%s'", reflect.TypeOf(err).String())
 	}
+
+	//
+	// TEST WHEN WindowSize IS ZERO
+	//
+	t.SetUpTest(c)
+
+	t.t.WindowSize = 0
+
+	data, err = t.t.Marshal("127.0.0.1", "127.0.0.2")
+	c.Assert(err, IsNil)
+	c.Assert(data, Not(IsNil))
+
+	r = bytes.NewReader(data)
+
+	// SourcePort
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(44273))
+
+	// DestinationPort
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(22))
+
+	// SeqNum
+	c.Assert(binary.Read(r, e, &u32), IsNil)
+	c.Check(u32, Equals, uint32(42))
+
+	// AckNum
+	c.Assert(binary.Read(r, e, &u32), IsNil)
+	c.Check(u32, Equals, uint32(0))
+
+	// DataOffset, Reserved, and all Control Flags!
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16>>12, Equals, uint16(5))  // DataOffset
+	c.Check(u16>>9&7, Equals, uint16(0)) // Reserved (should always be 000)
+	c.Check(u16>>8&1, Equals, uint16(0)) // NS
+	c.Check(u16>>7&1, Equals, uint16(0)) // CWR
+	c.Check(u16>>6&1, Equals, uint16(0)) // ECE
+	c.Check(u16>>5&1, Equals, uint16(0)) // URG
+	c.Check(u16>>4&1, Equals, uint16(0)) // ACK
+	c.Check(u16>>3&1, Equals, uint16(1)) // PSH
+	c.Check(u16>>2&1, Equals, uint16(0)) // RST
+	c.Check(u16>>1&1, Equals, uint16(1)) // SYN
+	c.Check(u16&1, Equals, uint16(0))    // FIN
+
+	// WindowSize
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(65535))
+
+	// Checksum
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(42500))
+
+	// UrgentPointer
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(0))
 }
