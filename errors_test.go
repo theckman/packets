@@ -16,3 +16,11 @@ func (t *TestSuite) TestDataOffsetInvalid_Error(c *C) {
 
 	c.Assert(e.Error(), Equals, "test message")
 }
+
+func (t *TestSuite) TestDataOffsetTooSmall_Error(c *C) {
+	var e packets.DataOffsetTooSmall
+
+	e = packets.DataOffsetTooSmall{E: "test message"}
+
+	c.Assert(e.Error(), Equals, "test message")
+}

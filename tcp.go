@@ -7,6 +7,7 @@ package packets
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -68,6 +69,9 @@ func UnmarshalTCPHeader(data []byte) (*TCPHeader, error) {
 //
 // However, if the *TCPHeader instance has the Checksum field set, it will be
 // included in the marshaled data.
+//
+// The error field may be of DataOffsetInvalid or DataOffsetTooSmall types. See
+// their documentation for more information.
 func (tcp *TCPHeader) Marshal() ([]byte, error) {
 	return tcp.marshalTCPHeader()
 }
@@ -78,6 +82,9 @@ func (tcp *TCPHeader) Marshal() ([]byte, error) {
 //
 // It's suggested that you use Marshal() instead and offload the
 // checksumming to your kernel (which should do it automatically if not present).
+//
+// The error field may be of DataOffsetInvalid or DataOffsetTooSmall types. See
+// their documentation for more information.
 func (tcp *TCPHeader) MarshalWithChecksum(laddr, raddr string) ([]byte, error) {
 	// marshal the header
 	data, err := tcp.marshalTCPHeader()
@@ -133,7 +140,9 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 	// if the offset is outside of the acceptable range
 	// fail with a DataOffsetInvalid error
 	if tcp.DataOffset > 15 || tcp.DataOffset < 5 {
-		return nil, DataOffsetInvalid{E: "DataOffset field must be at least 5 and no more than 15"}
+		return nil, DataOffsetInvalid{
+			E: "DataOffset field must be at least 5 and no more than 15",
+		}
 	}
 
 	// if the WindowSize field is the default let's set it to something better
@@ -165,6 +174,27 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 	binary.Write(buf, binary.BigEndian, tcp.WindowSize)
 	binary.Write(buf, binary.BigEndian, tcp.Checksum)
 	binary.Write(buf, binary.BigEndian, tcp.UrgentPointer)
+
+	// each offset is 4 bytes long so figure out how many bytes of padding
+	// we should have (based on the DataOffset size) to line up with the 32-bit
+	// boundary
+	totalPad := int(tcp.DataOffset*4) - buf.Len()
+
+	// DataOffset is too small for the amount of data in the header
+	if totalPad < 0 {
+		doSize := int(math.Ceil(float64(buf.Len()) / 4))
+		return nil, DataOffsetTooSmall{
+			E: fmt.Sprintf(
+				"The DataOffset field is too small for the data provided. It should be at least %d",
+				doSize,
+			),
+		}
+	}
+
+	// pad the end of the packet with null bytes to the 32-bit boundary
+	for i := 0; i < totalPad; i++ {
+		binary.Write(buf, binary.BigEndian, uint8(0))
+	}
 
 	return buf.Bytes(), nil
 }
