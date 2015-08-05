@@ -55,19 +55,26 @@ func UnmarshalTCPHeader(data []byte) (*TCPHeader, error) {
 	return unmarshalTCPHeader(data)
 }
 
-// MarshalNoChecksum is a function to marshal the *TCPHeader instance to a byte slice
+// Marshal is a function to marshal the *TCPHeader instance to a byte slice
 // without explicitly calculating the checksum for the data. Because there is no
 // checksumming of the data, the local and remote addresses are not required.
 //
-// If the *TCPHeader instance has the Checksum field set, it will be included in the
-// marshaled data.
-func (tcp *TCPHeader) MarshalNoChecksum() ([]byte, error) {
+// To note, if the checksum is not provided (i.e. 0) the kernel SHOULD automatically
+// calculate this for you.
+//
+// However, if the *TCPHeader instance has the Checksum field set, it will be
+// included in the marshaled data.
+func (tcp *TCPHeader) Marshal() ([]byte, error) {
 	return tcp.marshalTCPHeader()
 }
 
-// Marshal is a function to marshal the TCPHeader to a byte slice for sending
-// across the network.
-func (tcp *TCPHeader) Marshal(laddr, raddr string) ([]byte, error) {
+// MarshalWithChecksum is a function to marshal the TCPHeader to a byte slice.
+// This function is almost the same as Marshal() However, this calculates also
+// the TCP checksum and adds it to the header / marshaled data.
+//
+// It's suggested that you use Marshal() instead and offload the
+// checksumming to your kernel (which should do it automatically if not present).
+func (tcp *TCPHeader) MarshalWithChecksum(laddr, raddr string) ([]byte, error) {
 	// marshal the header
 	data, err := tcp.marshalTCPHeader()
 
