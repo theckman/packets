@@ -136,11 +136,11 @@ func (t *TestSuite) TestChecksumIPv4(c *C) {
 	c.Check(csum, Equals, uint16(0xfb59))
 }
 
-func (t *TestSuite) TestMarshalNoChecksum(c *C) {
+func (t *TestSuite) TestMarshal(c *C) {
 	var data []byte
 	var err error
 
-	data, err = t.t.MarshalNoChecksum()
+	data, err = t.t.Marshal()
 	c.Assert(err, IsNil)
 	c.Assert(data, Not(IsNil))
 
@@ -193,11 +193,11 @@ func (t *TestSuite) TestMarshalNoChecksum(c *C) {
 	c.Check(u16, Equals, uint16(0))
 }
 
-func (t *TestSuite) TestMarshal(c *C) {
+func (t *TestSuite) TestMarshalWithChecksum(c *C) {
 	var data []byte
 	var err error
 
-	data, err = t.t.Marshal("127.0.0.1", "127.0.0.2")
+	data, err = t.t.MarshalWithChecksum("127.0.0.1", "127.0.0.2")
 	c.Assert(err, IsNil)
 	c.Assert(data, Not(IsNil))
 
@@ -256,7 +256,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 
 	t.t.DataOffset = 0
 
-	data, err = t.t.Marshal("127.0.0.1", "127.0.0.2")
+	data, err = t.t.MarshalWithChecksum("127.0.0.1", "127.0.0.2")
 	c.Assert(err, IsNil)
 	c.Assert(data, Not(IsNil))
 
@@ -311,7 +311,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 
 	t.t.DataOffset = 3
 
-	data, err = t.t.Marshal("127.0.0.1", "127.0.0.2")
+	data, err = t.t.MarshalWithChecksum("127.0.0.1", "127.0.0.2")
 	c.Assert(err, Not(IsNil))
 	c.Check(data, IsNil)
 
@@ -329,7 +329,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 
 	t.t.WindowSize = 0
 
-	data, err = t.t.Marshal("127.0.0.1", "127.0.0.2")
+	data, err = t.t.MarshalWithChecksum("127.0.0.1", "127.0.0.2")
 	c.Assert(err, IsNil)
 	c.Assert(data, Not(IsNil))
 
