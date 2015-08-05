@@ -150,6 +150,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 
 	var u32 uint32
 	var u16 uint16
+	var u8 uint8
 
 	r := bytes.NewReader(data)
 	e := binary.BigEndian
@@ -195,6 +196,71 @@ func (t *TestSuite) TestMarshal(c *C) {
 	// UrgentPointer
 	c.Assert(binary.Read(r, e, &u16), IsNil)
 	c.Check(u16, Equals, uint16(0))
+
+	//
+	// TEST WHEN DataOffset IS LARGE ENOUGH TO NEED PADDING
+	//
+	t.SetUpTest(c) // reset!
+
+	t.t.DataOffset = 6
+
+	data, err = t.t.Marshal()
+	c.Assert(err, IsNil)
+	c.Assert(data, Not(IsNil))
+
+	r = bytes.NewReader(data)
+
+	// SourcePort
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(44273))
+
+	// DestinationPort
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(22))
+
+	// SeqNum
+	c.Assert(binary.Read(r, e, &u32), IsNil)
+	c.Check(u32, Equals, uint32(42))
+
+	// AckNum
+	c.Assert(binary.Read(r, e, &u32), IsNil)
+	c.Check(u32, Equals, uint32(0))
+
+	// DataOffset, Reserved, and all Control Flags!
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16>>12, Equals, uint16(6))  // DataOffset
+	c.Check(u16>>9&7, Equals, uint16(0)) // Reserved (should always be 000)
+	c.Check(u16>>8&1, Equals, uint16(0)) // NS
+	c.Check(u16>>7&1, Equals, uint16(0)) // CWR
+	c.Check(u16>>6&1, Equals, uint16(0)) // ECE
+	c.Check(u16>>5&1, Equals, uint16(0)) // URG
+	c.Check(u16>>4&1, Equals, uint16(0)) // ACK
+	c.Check(u16>>3&1, Equals, uint16(1)) // PSH
+	c.Check(u16>>2&1, Equals, uint16(0)) // RST
+	c.Check(u16>>1&1, Equals, uint16(1)) // SYN
+	c.Check(u16&1, Equals, uint16(0))    // FIN
+
+	// WindowSize
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(43690))
+
+	// Checksum
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(0))
+
+	// UrgentPointer
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(0))
+
+	// 4 padded bytes due to DataOffset being too big
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 0-7
+	c.Check(u8, Equals, uint8(0))
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 8-15
+	c.Check(u8, Equals, uint8(0))
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 16-23
+	c.Check(u8, Equals, uint8(0))
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Check(u8, Equals, uint8(0))
 }
 
 func (t *TestSuite) TestMarshalWithChecksum(c *C) {
