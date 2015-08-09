@@ -132,6 +132,65 @@ func (tcp *TCPHeader) MarshalWithChecksum(laddr, raddr string) ([]byte, error) {
 	return fullData, nil
 }
 
+// UnmarshalTCPOptionSlice is a function that takes a byte slice and converts
+// it in to a TCPOptionSlice.
+func UnmarshalTCPOptionSlice(data []byte) (TCPOptionSlice, error) {
+	var d uint8
+	opts := make(TCPOptionSlice, 0)
+	reader := bytes.NewReader(data)
+
+	for i := 0; i < len(data); i += 0 {
+		var opt TCPOption
+
+		// read the Option-Kind field.
+		err := binary.Read(reader, binary.BigEndian, &d)
+		if err != nil {
+			return nil, err
+		}
+
+		switch d {
+		case 0:
+			// push the index over the loop conditional so we're free
+			i = len(data)
+			break
+		case 1:
+			// increment the counter by one
+			i++
+			continue
+		default:
+			// set the Kind field to the Option-Kind value
+			opt.Kind = d
+
+			// read off the Option-Length field and set it
+			err = binary.Read(reader, binary.BigEndian, &d)
+			if err != nil {
+				return nil, err
+			}
+
+			opt.Length = d
+
+			// figure out how much data there is to read,
+			// allocate a byte slice for it, and read it
+			optionData := make([]byte, int(opt.Length-2))
+
+			err = binary.Read(reader, binary.BigEndian, &optionData)
+			if err != nil {
+				return nil, err
+			}
+
+			// set the Data from the Option-Data field
+			// and append this option to the TCPOptionSlice
+			opt.Data = optionData
+			opts = append(opts, &opt)
+
+			// increment the counter with the number of byte reads
+			i = int(uint8(i) + opt.Length)
+		}
+	}
+
+	return opts, nil
+}
+
 // Marshal is a method to marshal the TCPOptionSlice to the raw bytes for use
 // in the TCPHeader.Marshal() method. It's exported mainly for convenience as
 // marsahling uses this function itself.
@@ -431,54 +490,16 @@ func unmarshalTCPHeader(data []byte) (*TCPHeader, error) {
 	header.FIN = ctrlBitValue(ctrl, finBit)
 
 	if header.DataOffset > 5 {
-		var d uint8
-		opts := make(TCPOptionSlice, 0)
+		optsBytes := make([]byte, len(data)-tcpHeaderMinSize)
 
-		for i := 0; i < len(data)-20; i += 0 {
-			var opt TCPOption
+		_, err = reader.Read(optsBytes)
+		if err != nil {
+			return nil, err
+		}
 
-			// read the Option-Kind field.
-			err = binary.Read(reader, binary.BigEndian, &d)
-			if err != nil {
-				return nil, err
-			}
-
-			switch d {
-			case 0:
-				break
-			case 1:
-				i++
-				continue
-			default:
-				// set the Kind field to the Option-Kind value
-				opt.Kind = d
-
-				// read off the Option-Length field and set it
-				err = binary.Read(reader, binary.BigEndian, &d)
-				if err != nil {
-					return nil, err
-				}
-
-				opt.Length = d
-
-				// figure out how much data there is to read,
-				// allocate a byte slice for it, and read it
-				optionData := make([]byte, int(opt.Length-2))
-
-				err = binary.Read(reader, binary.BigEndian, &optionData)
-				if err != nil {
-					return nil, err
-				}
-
-				// set the Data from the Option-Data field
-				// and append this option to the TCPOptionSlice
-				opt.Data = optionData
-				opts = append(opts, &opt)
-
-				// increment the counter with the number of byte reads
-				i = int(uint8(i) + opt.Length)
-			}
-
+		opts, err := UnmarshalTCPOptionSlice(optsBytes)
+		if err != nil {
+			return nil, err
 		}
 
 		header.Options = opts

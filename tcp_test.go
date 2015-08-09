@@ -146,6 +146,60 @@ func (t *TestSuite) TestTCPOptionSlice_Marshal(c *C) {
 	}
 }
 
+func (t *TestSuite) TestUnmarshalTCPOptionSlice(c *C) {
+	var tcpos packets.TCPOptionSlice
+	var err error
+
+	optSlice := make(packets.TCPOptionSlice, 0)
+
+	opt := &packets.TCPOption{
+		Kind:   3,
+		Length: 3,
+		Data:   []byte{uint8(128)},
+	}
+
+	optSlice = append(optSlice, opt)
+
+	opt = &packets.TCPOption{
+		Kind:   4,
+		Length: 2,
+		Data:   make([]byte, 0),
+	}
+
+	optSlice = append(optSlice, opt)
+
+	optBytes, err := optSlice.Marshal()
+	c.Assert(err, IsNil)
+	c.Assert(optBytes, Not(IsNil))
+
+	rawBytes := new(bytes.Buffer)
+	binary.Write(rawBytes, Te, optBytes)
+
+	// add zero padding to nearest 32-bit boundary
+	for i := 0; i < rawBytes.Len()%4; i++ {
+		binary.Write(rawBytes, Te, uint8(0))
+	}
+
+	tcpos, err = packets.UnmarshalTCPOptionSlice(rawBytes.Bytes())
+	c.Assert(err, IsNil)
+	c.Assert(len(tcpos), Equals, 2)
+
+	c.Assert(tcpos[0], Not(IsNil))
+	opt = tcpos[0]
+
+	c.Check(opt.Kind, Equals, uint8(3))
+	c.Check(opt.Length, Equals, uint8(3))
+	c.Assert(len(opt.Data), Equals, 1)
+	c.Check(opt.Data[0], Equals, uint8(128))
+
+	c.Assert(tcpos[1], Not(IsNil))
+	opt = tcpos[1]
+
+	c.Check(opt.Kind, Equals, uint8(4))
+	c.Check(opt.Length, Equals, uint8(2))
+	c.Assert(len(opt.Data), Equals, 0)
+}
+
 func (t *TestSuite) TestUnmarshalTCPHeader(c *C) {
 	var header *packets.TCPHeader
 
@@ -200,12 +254,11 @@ func (t *TestSuite) TestUnmarshalTCPHeader(c *C) {
 
 	binary.Write(rawBytes, Te, optBytes)
 
-	// laddr := "127.0.0.1"
-	// raddr := "127.0.0.2"
+	// add zero padding to nearest 32-bit boundary
+	for i := 0; i < rawBytes.Len()%4; i++ {
+		binary.Write(rawBytes, Te, uint8(0))
+	}
 
-	// csum1, fullData := packets.ChecksumIPv4(rawBytes.Bytes(), laddr, raddr)
-	// fmt.Println(string(fullData))
-	// fmt.Println(csum1)
 	header, err = packets.UnmarshalTCPHeader(rawBytes.Bytes())
 	c.Assert(err, IsNil)
 
