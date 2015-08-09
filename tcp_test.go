@@ -407,7 +407,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 	//
 
 	//
-	// TCPOptionaDataTooLong
+	// ErrTCPOptionaDataTooLong
 	//
 	t.SetUpTest(c) // reset!
 
@@ -434,16 +434,15 @@ func (t *TestSuite) TestMarshal(c *C) {
 	c.Assert(data, IsNil)
 
 	switch err.(type) {
-	case packets.TCPOptionDataTooLong:
+	case packets.ErrTCPOptionDataTooLong:
 		c.Check(err.Error(), Equals, "Option 0 Data cannot be larger than 253 bytes")
 	default:
 		c.Fatal("error type should be packets.TCPOptionDataTooLarge")
 	}
 
 	//
-	// TCPOptionaDataTooLong
+	// ErrTCPOptionaDataTooLong
 	//
-
 	optSlice = make(packets.TCPOptionSlice, 0)
 
 	failTestData = make([]byte, 253)
@@ -466,10 +465,71 @@ func (t *TestSuite) TestMarshal(c *C) {
 	c.Assert(data, IsNil)
 
 	switch err.(type) {
-	case packets.TCPOptionDataInvalid:
+	case packets.ErrTCPOptionDataInvalid:
 		c.Check(err.Error(), Equals, "Option 0 Length doesn't match length of data")
 	default:
-		c.Fatal("error type should be packets.TCPOptionDataInvalid")
+		c.Fatal("error type should be packets.ErrTCPOptionDataInvalid")
+	}
+
+	//
+	// ErrTCPOptionsOverflow
+	//
+	optSlice = make(packets.TCPOptionSlice, 4)
+
+	for i := range optSlice {
+		failTestData = make([]byte, 253)
+
+		for i := range failTestData {
+			failTestData[i] = byte(0)
+		}
+
+		optSlice[i] = &packets.TCPOption{
+			Kind:   3,
+			Length: 255,
+			Data:   failTestData,
+		}
+	}
+
+	t.t.Options = optSlice
+	data, err = t.t.Marshal()
+	c.Assert(err, Not(IsNil))
+	c.Assert(data, IsNil)
+
+	switch err.(type) {
+	case packets.ErrTCPOptionsOverflow:
+		c.Check(err.Error(), Equals, "TCP Options are too large, must be less than 40 total bytes")
+	default:
+		c.Fatal("error type should be packets.ErrTCPOptionDataInvalid")
+	}
+
+	//
+	// TEST DataOffset MIN LENGTH VALIDATION
+	//
+
+	optSlice = make(packets.TCPOptionSlice, 0)
+
+	failTestData = make([]byte, 0)
+
+	opt = &packets.TCPOption{
+		Kind:   3,
+		Length: 2,
+		Data:   failTestData,
+	}
+
+	optSlice = append(optSlice, opt)
+
+	t.t.Options = optSlice
+	t.t.DataOffset = 5
+
+	data, err = t.t.Marshal()
+	c.Assert(err, Not(IsNil))
+	c.Assert(data, IsNil)
+
+	switch err.(type) {
+	case packets.ErrTCPDataOffsetTooSmall:
+		c.Check(err.Error(), Equals, "The DataOffset field is too small for the data provided. It should be at least 6")
+	default:
+		c.Fatalf("error type should be packets.ErrTCPDataOffsetTooSmall type is %s", reflect.TypeOf(err).String())
 	}
 }
 
@@ -596,7 +656,7 @@ func (t *TestSuite) TestMarshalWithChecksum(c *C) {
 	c.Check(data, IsNil)
 
 	switch err.(type) {
-	case packets.TCPDataOffsetInvalid:
+	case packets.ErrTCPDataOffsetInvalid:
 		c.Check(err.Error(), Equals, "DataOffset field must be at least 5 and no more than 15")
 	default:
 		c.Fatalf("Unexpected error type! Should be packets.DataOffset was '%s'", reflect.TypeOf(err).String())
