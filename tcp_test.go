@@ -46,6 +46,106 @@ func (t *TestSuite) SetUpTest(c *C) {
 	}
 }
 
+func (t *TestSuite) TestTCPOptionSlice_Marshal(c *C) {
+	var data []byte
+	var err error
+
+	optSlice := make(packets.TCPOptionSlice, 0)
+
+	opt := &packets.TCPOption{
+		Kind:   3,
+		Length: 3,
+		Data:   []byte{uint8(128)},
+	}
+
+	optSlice = append(optSlice, opt)
+
+	// also make sure we have a nil check in the codepath
+	// which should just move on to the next item in the slice
+	optSlice = append(optSlice, nil)
+
+	opt = &packets.TCPOption{
+		Kind:   4,
+		Length: 2,
+		Data:   make([]byte, 0),
+	}
+
+	optSlice = append(optSlice, opt)
+
+	data, err = optSlice.Marshal()
+	c.Assert(err, IsNil)
+	c.Assert(data, Not(IsNil))
+
+	e := binary.BigEndian
+	r := bytes.NewReader(data)
+
+	var u8 uint8
+
+	// First opttion
+	c.Assert(binary.Read(r, e, &u8), IsNil)
+	c.Check(u8, Equals, uint8(3))
+	c.Assert(binary.Read(r, e, &u8), IsNil)
+	c.Check(u8, Equals, uint8(3))
+	c.Assert(binary.Read(r, e, &u8), IsNil)
+	c.Check(u8, Equals, uint8(128))
+	// TCP Option padding (ones)
+	c.Assert(binary.Read(r, e, &u8), IsNil)
+	c.Check(u8, Equals, uint8(1))
+	// Second option
+	c.Assert(binary.Read(r, e, &u8), IsNil)
+	c.Check(u8, Equals, uint8(4))
+	c.Assert(binary.Read(r, e, &u8), IsNil)
+	c.Check(u8, Equals, uint8(2))
+
+	//
+	// TEST ErrTCPOptionDataTooLong
+	//
+
+	optSlice = make(packets.TCPOptionSlice, 0)
+
+	failTestData := make([]byte, 256)
+
+	for i := range failTestData {
+		failTestData[i] = byte(0)
+	}
+
+	opt = &packets.TCPOption{
+		Kind:   3,
+		Length: 3,
+		Data:   failTestData,
+	}
+
+	optSlice = append(optSlice, opt)
+
+	data, err = optSlice.Marshal()
+	c.Assert(err, Not(IsNil))
+	c.Assert(data, IsNil)
+
+	switch err.(type) {
+	case packets.ErrTCPOptionDataTooLong:
+		c.Check(err.Error(), Equals, "Option 0 Data cannot be larger than 253 bytes")
+	default:
+		c.Fatalf("error type should be packets.ErrTCPOptionDataTooLarge was %s", reflect.TypeOf(err).String())
+	}
+
+	//
+	// TEST ErrTCPOptionDataInvalid
+	//
+
+	optSlice[0].Data = make([]byte, 0)
+
+	data, err = optSlice.Marshal()
+	c.Assert(err, Not(IsNil))
+	c.Assert(data, IsNil)
+
+	switch err.(type) {
+	case packets.ErrTCPOptionDataInvalid:
+		c.Check(err.Error(), Equals, "Option 0 Length doesn't match length of data")
+	default:
+		c.Fatalf("error type should be packets.ErrTCPOptionDataInvalid was %s", reflect.TypeOf(err).String())
+	}
+}
+
 func (t *TestSuite) TestUnmarshalTCPHeader(c *C) {
 	var header *packets.TCPHeader
 
@@ -175,7 +275,7 @@ func (t *TestSuite) TestChecksumIPv4(c *C) {
 	c.Check(csum, Equals, uint16(0xfb59))
 }
 
-func (t *TestSuite) TestMarshal(c *C) {
+func (t *TestSuite) TestTCPHeader_Marshal(c *C) {
 	var data []byte
 	var err error
 
@@ -382,24 +482,24 @@ func (t *TestSuite) TestMarshal(c *C) {
 
 	// TCP Options
 	// First opttion
-	c.Assert(binary.Read(r, e, &u8), IsNil) // 0-7
+	c.Assert(binary.Read(r, e, &u8), IsNil)
 	c.Check(u8, Equals, uint8(3))
-	c.Assert(binary.Read(r, e, &u8), IsNil) // 8-15
+	c.Assert(binary.Read(r, e, &u8), IsNil)
 	c.Check(u8, Equals, uint8(3))
-	c.Assert(binary.Read(r, e, &u8), IsNil) // 16-23
+	c.Assert(binary.Read(r, e, &u8), IsNil)
 	c.Check(u8, Equals, uint8(128))
 	// TCP Option padding (ones)
-	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Assert(binary.Read(r, e, &u8), IsNil)
 	c.Check(u8, Equals, uint8(1))
 	// Second option
-	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Assert(binary.Read(r, e, &u8), IsNil)
 	c.Check(u8, Equals, uint8(4))
-	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Assert(binary.Read(r, e, &u8), IsNil)
 	c.Check(u8, Equals, uint8(2))
 	// TCP Header padding (zeroes)
-	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Assert(binary.Read(r, e, &u8), IsNil)
 	c.Check(u8, Equals, uint8(0))
-	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Assert(binary.Read(r, e, &u8), IsNil)
 	c.Check(u8, Equals, uint8(0))
 
 	//
@@ -437,7 +537,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 	case packets.ErrTCPOptionDataTooLong:
 		c.Check(err.Error(), Equals, "Option 0 Data cannot be larger than 253 bytes")
 	default:
-		c.Fatal("error type should be packets.TCPOptionDataTooLarge")
+		c.Fatalf("error type should be packets.ErrTCPOptionDataTooLarge was %s", reflect.TypeOf(err).String())
 	}
 
 	//
@@ -468,7 +568,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 	case packets.ErrTCPOptionDataInvalid:
 		c.Check(err.Error(), Equals, "Option 0 Length doesn't match length of data")
 	default:
-		c.Fatal("error type should be packets.ErrTCPOptionDataInvalid")
+		c.Fatalf("error type should be packets.ErrTCPOptionDataInvalid was %s", reflect.TypeOf(err).String())
 	}
 
 	//
@@ -499,7 +599,7 @@ func (t *TestSuite) TestMarshal(c *C) {
 	case packets.ErrTCPOptionsOverflow:
 		c.Check(err.Error(), Equals, "TCP Options are too large, must be less than 40 total bytes")
 	default:
-		c.Fatal("error type should be packets.ErrTCPOptionDataInvalid")
+		c.Fatalf("error type should be packets.ErrTCPOptionDataInvalid was %s", reflect.TypeOf(err).String())
 	}
 
 	//
@@ -529,11 +629,11 @@ func (t *TestSuite) TestMarshal(c *C) {
 	case packets.ErrTCPDataOffsetTooSmall:
 		c.Check(err.Error(), Equals, "The DataOffset field is too small for the data provided. It should be at least 6")
 	default:
-		c.Fatalf("error type should be packets.ErrTCPDataOffsetTooSmall type is %s", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packets.ErrTCPDataOffsetTooSmall type was %s", reflect.TypeOf(err).String())
 	}
 }
 
-func (t *TestSuite) TestMarshalWithChecksum(c *C) {
+func (t *TestSuite) TestTCPHeader_MarshalWithChecksum(c *C) {
 	var data []byte
 	var err error
 
@@ -659,7 +759,7 @@ func (t *TestSuite) TestMarshalWithChecksum(c *C) {
 	case packets.ErrTCPDataOffsetInvalid:
 		c.Check(err.Error(), Equals, "DataOffset field must be at least 5 and no more than 15")
 	default:
-		c.Fatalf("Unexpected error type! Should be packets.DataOffset was '%s'", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packets.ErrTCPDataOffsetInvalid was %s", reflect.TypeOf(err).String())
 	}
 
 	//
