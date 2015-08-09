@@ -4,57 +4,57 @@
 
 package packets
 
-// TCPDataOffsetInvalid is a type that implements the error interface. It's used for errors
+// ErrTCPDataOffsetInvalid is a type that implements the error interface. It's used for errors
 // marshaling the TCPHeader data. You can type assert against it to handle that input
 // differently.
-type TCPDataOffsetInvalid struct {
+type ErrTCPDataOffsetInvalid struct {
 	E string
 }
 
-func (e TCPDataOffsetInvalid) Error() string {
+func (e ErrTCPDataOffsetInvalid) Error() string {
 	return e.E
 }
 
-// TCPDataOffsetTooSmall is a type that implements the error interface. It's used for errors
+// ErrTCPDataOffsetTooSmall is a type that implements the error interface. It's used for errors
 // marshaling the TCPHeader data. Specifically, this is used when the DataOffset is too small
 // for the amount of data in the TCP header.
-type TCPDataOffsetTooSmall struct {
+type ErrTCPDataOffsetTooSmall struct {
 	E string
 }
 
-func (e TCPDataOffsetTooSmall) Error() string {
+func (e ErrTCPDataOffsetTooSmall) Error() string {
 	return e.E
 }
 
-// TCPOptionsOverflow is a type that implements the error interface. It's used for errors
+// ErrTCPOptionsOverflow is a type that implements the error interface. It's used for errors
 // marshaling the TCPHeader data. Specifically, this is used when the TCP Options field exceeds
 // its maximum length as specified by the RFC.
-type TCPOptionsOverflow struct {
+type ErrTCPOptionsOverflow struct {
 	E string
 }
 
-func (e TCPOptionsOverflow) Error() string {
+func (e ErrTCPOptionsOverflow) Error() string {
 	return e.E
 }
 
-// TCPOptionDataInvalid is a type that implements the error interface. It's used for errors
+// ErrTCPOptionDataInvalid is a type that implements the error interface. It's used for errors
 // marshaling the TCPHeader data. Specifically, this is used when the TCP Options Length field
 // doesn't match the data provided.
-type TCPOptionDataInvalid struct {
+type ErrTCPOptionDataInvalid struct {
 	E string
 }
 
-func (e TCPOptionDataInvalid) Error() string {
+func (e ErrTCPOptionDataInvalid) Error() string {
 	return e.E
 }
 
-// TCPOptionDataTooLong is a type that implements the error interface. It's used for errors
+// ErrTCPOptionDataTooLong is a type that implements the error interface. It's used for errors
 // marshaling the TCPHeader data. Specifically, this is use for when the TCP Options Data field is
 // too long for the Options field as per the RFC.
-type TCPOptionDataTooLong struct {
+type ErrTCPOptionDataTooLong struct {
 	E string
 }
 
-func (e TCPOptionDataTooLong) Error() string {
+func (e ErrTCPOptionDataTooLong) Error() string {
 	return e.E
 }

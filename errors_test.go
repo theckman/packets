@@ -9,42 +9,42 @@ import (
 	. "gopkg.in/check.v1"
 )
 
-func (t *TestSuite) TestDataOffsetInvalid_Error(c *C) {
-	var e packets.TCPDataOffsetInvalid
+func (t *TestSuite) TestErrTCPDataOffsetInvalid_Error(c *C) {
+	var e packets.ErrTCPDataOffsetInvalid
 
-	e = packets.TCPDataOffsetInvalid{E: "test message"}
-
-	c.Assert(e.Error(), Equals, "test message")
-}
-
-func (t *TestSuite) TestDataOffsetTooSmall_Error(c *C) {
-	var e packets.TCPDataOffsetTooSmall
-
-	e = packets.TCPDataOffsetTooSmall{E: "test message"}
+	e = packets.ErrTCPDataOffsetInvalid{E: "test message"}
 
 	c.Assert(e.Error(), Equals, "test message")
 }
 
-func (t *TestSuite) TestOptionsOverflow_Error(c *C) {
-	var e packets.TCPOptionsOverflow
+func (t *TestSuite) TestErrTCPDataOffsetTooSmall_Error(c *C) {
+	var e packets.ErrTCPDataOffsetTooSmall
 
-	e = packets.TCPOptionsOverflow{E: "test message"}
-
-	c.Assert(e.Error(), Equals, "test message")
-}
-
-func (t *TestSuite) TestOptionDataInvalid_Error(c *C) {
-	var e packets.TCPOptionDataInvalid
-
-	e = packets.TCPOptionDataInvalid{E: "test message"}
+	e = packets.ErrTCPDataOffsetTooSmall{E: "test message"}
 
 	c.Assert(e.Error(), Equals, "test message")
 }
 
-func (t *TestSuite) TestOptionDataTooLong_Error(c *C) {
-	var e packets.TCPOptionDataTooLong
+func (t *TestSuite) TestErrTCPOptionsOverflow_Error(c *C) {
+	var e packets.ErrTCPOptionsOverflow
 
-	e = packets.TCPOptionDataTooLong{E: "test message"}
+	e = packets.ErrTCPOptionsOverflow{E: "test message"}
+
+	c.Assert(e.Error(), Equals, "test message")
+}
+
+func (t *TestSuite) TestErrTCPOptionDataInvalid_Error(c *C) {
+	var e packets.ErrTCPOptionDataInvalid
+
+	e = packets.ErrTCPOptionDataInvalid{E: "test message"}
+
+	c.Assert(e.Error(), Equals, "test message")
+}
+
+func (t *TestSuite) TestErrTCPOptionDataTooLong_Error(c *C) {
+	var e packets.ErrTCPOptionDataTooLong
+
+	e = packets.ErrTCPOptionDataTooLong{E: "test message"}
 
 	c.Assert(e.Error(), Equals, "test message")
 }
