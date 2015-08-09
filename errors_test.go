@@ -10,17 +10,41 @@ import (
 )
 
 func (t *TestSuite) TestDataOffsetInvalid_Error(c *C) {
-	var e packets.DataOffsetInvalid
+	var e packets.TCPDataOffsetInvalid
 
-	e = packets.DataOffsetInvalid{E: "test message"}
+	e = packets.TCPDataOffsetInvalid{E: "test message"}
 
 	c.Assert(e.Error(), Equals, "test message")
 }
 
 func (t *TestSuite) TestDataOffsetTooSmall_Error(c *C) {
-	var e packets.DataOffsetTooSmall
+	var e packets.TCPDataOffsetTooSmall
 
-	e = packets.DataOffsetTooSmall{E: "test message"}
+	e = packets.TCPDataOffsetTooSmall{E: "test message"}
+
+	c.Assert(e.Error(), Equals, "test message")
+}
+
+func (t *TestSuite) TestOptionsOverflow_Error(c *C) {
+	var e packets.TCPOptionsOverflow
+
+	e = packets.TCPOptionsOverflow{E: "test message"}
+
+	c.Assert(e.Error(), Equals, "test message")
+}
+
+func (t *TestSuite) TestOptionDataInvalid_Error(c *C) {
+	var e packets.TCPOptionDataInvalid
+
+	e = packets.TCPOptionDataInvalid{E: "test message"}
+
+	c.Assert(e.Error(), Equals, "test message")
+}
+
+func (t *TestSuite) TestOptionDataTooLong_Error(c *C) {
+	var e packets.TCPOptionDataTooLong
+
+	e = packets.TCPOptionDataTooLong{E: "test message"}
 
 	c.Assert(e.Error(), Equals, "test message")
 }

@@ -30,7 +30,6 @@ func (t *TestSuite) SetUpTest(c *C) {
 		DestinationPort: 22,
 		SeqNum:          42,
 		AckNum:          0,
-		DataOffset:      5,
 		Reserved:        0,
 		NS:              false,
 		CWR:             false,
@@ -63,7 +62,7 @@ func (t *TestSuite) TestUnmarshalTCPHeader(c *C) {
 
 	// Data offset (4 bits), Reserved (3 bits), NS, CWR, ECE,
 	// URG, ACK,
-	mix := uint16(5)<<12 | // Data Offset (4 bits)
+	mix := uint16(7)<<12 | // Data Offset (4 bits)
 		uint16(0)<<9 | // Reserved (3 bits)
 		uint16(0)<<6 | // ECN (3 bits)
 		uint16(8) | // PSH (1 bit)
@@ -78,19 +77,43 @@ func (t *TestSuite) TestUnmarshalTCPHeader(c *C) {
 	// Urgent
 	binary.Write(rawBytes, Te, uint16(0))
 
+	optSlice := make(packets.TCPOptionSlice, 0)
+
+	opt := &packets.TCPOption{
+		Kind:   3,
+		Length: 3,
+		Data:   []byte{uint8(128)},
+	}
+
+	optSlice = append(optSlice, opt)
+
+	opt = &packets.TCPOption{
+		Kind:   4,
+		Length: 2,
+		Data:   make([]byte, 0),
+	}
+
+	optSlice = append(optSlice, opt)
+
+	optBytes, err := optSlice.Marshal()
+	c.Assert(err, IsNil)
+
+	binary.Write(rawBytes, Te, optBytes)
+
 	// laddr := "127.0.0.1"
 	// raddr := "127.0.0.2"
 
 	// csum1, fullData := packets.ChecksumIPv4(rawBytes.Bytes(), laddr, raddr)
 	// fmt.Println(string(fullData))
 	// fmt.Println(csum1)
-	header, err := packets.UnmarshalTCPHeader(rawBytes.Bytes())
+	header, err = packets.UnmarshalTCPHeader(rawBytes.Bytes())
 	c.Assert(err, IsNil)
 
 	c.Check(header.SourcePort, Equals, uint16(44273))
 	c.Check(header.DestinationPort, Equals, uint16(22))
 	c.Check(header.SeqNum, Equals, uint32(42))
 	c.Check(header.AckNum, Equals, uint32(0))
+	c.Check(header.DataOffset, Equals, uint8(7))
 	c.Check(header.NS, Equals, false)
 	c.Check(header.CWR, Equals, false)
 	c.Check(header.ECE, Equals, false)
@@ -103,6 +126,18 @@ func (t *TestSuite) TestUnmarshalTCPHeader(c *C) {
 	c.Check(header.WindowSize, Equals, uint16(43690))
 	c.Check(header.Checksum, Equals, uint16(42332))
 	c.Check(header.UrgentPointer, Equals, uint16(0))
+
+	// Options
+	c.Assert(len(header.Options), Equals, 2)
+	// First option
+	c.Check(header.Options[0].Kind, Equals, uint8(3))
+	c.Check(header.Options[0].Length, Equals, uint8(3))
+	c.Assert(len(header.Options[0].Data), Equals, 1)
+	c.Check(header.Options[0].Data[0], Equals, uint8(128))
+	// Second option
+	c.Check(header.Options[1].Kind, Equals, uint8(4))
+	c.Check(header.Options[1].Length, Equals, uint8(2))
+	c.Check(len(header.Options[1].Data), Equals, 0)
 }
 
 func (t *TestSuite) TestChecksumIPv4(c *C) {
@@ -147,6 +182,9 @@ func (t *TestSuite) TestMarshal(c *C) {
 	data, err = t.t.Marshal()
 	c.Assert(err, IsNil)
 	c.Assert(data, Not(IsNil))
+
+	// should end on a 32-bit boundary
+	c.Check(len(data)%4, Equals, 0)
 
 	var u32 uint32
 	var u16 uint16
@@ -208,6 +246,9 @@ func (t *TestSuite) TestMarshal(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(data, Not(IsNil))
 
+	// should end on a 32-bit boundary
+	c.Check(len(data)%4, Equals, 0)
+
 	r = bytes.NewReader(data)
 
 	// SourcePort
@@ -261,6 +302,175 @@ func (t *TestSuite) TestMarshal(c *C) {
 	c.Check(u8, Equals, uint8(0))
 	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
 	c.Check(u8, Equals, uint8(0))
+
+	//
+	// TEST TCP OPTION HANDLING
+	//
+
+	t.SetUpTest(c) // reset!
+
+	optSlice := make(packets.TCPOptionSlice, 0)
+
+	opt := &packets.TCPOption{
+		Kind:   3,
+		Length: 3,
+		Data:   []byte{uint8(128)},
+	}
+
+	optSlice = append(optSlice, opt)
+
+	opt = &packets.TCPOption{
+		Kind:   4,
+		Length: 2,
+		Data:   make([]byte, 0),
+	}
+
+	optSlice = append(optSlice, opt)
+
+	t.t.Options = optSlice
+
+	data, err = t.t.Marshal()
+	c.Assert(err, IsNil)
+	c.Assert(data, Not(IsNil))
+
+	// should end on a 32-bit boundary
+	c.Check(len(data)%4, Equals, 0)
+
+	r = bytes.NewReader(data)
+
+	// SourcePort
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(44273))
+
+	// DestinationPort
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(22))
+
+	// SeqNum
+	c.Assert(binary.Read(r, e, &u32), IsNil)
+	c.Check(u32, Equals, uint32(42))
+
+	// AckNum
+	c.Assert(binary.Read(r, e, &u32), IsNil)
+	c.Check(u32, Equals, uint32(0))
+
+	// DataOffset, Reserved, and all Control Flags!
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16>>12, Equals, uint16(7))  // DataOffset
+	c.Check(u16>>9&7, Equals, uint16(0)) // Reserved (should always be 000)
+	c.Check(u16>>8&1, Equals, uint16(0)) // NS
+	c.Check(u16>>7&1, Equals, uint16(0)) // CWR
+	c.Check(u16>>6&1, Equals, uint16(0)) // ECE
+	c.Check(u16>>5&1, Equals, uint16(0)) // URG
+	c.Check(u16>>4&1, Equals, uint16(0)) // ACK
+	c.Check(u16>>3&1, Equals, uint16(1)) // PSH
+	c.Check(u16>>2&1, Equals, uint16(0)) // RST
+	c.Check(u16>>1&1, Equals, uint16(1)) // SYN
+	c.Check(u16&1, Equals, uint16(0))    // FIN
+
+	// WindowSize
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(43690))
+
+	// Checksum
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(0))
+
+	// UrgentPointer
+	c.Assert(binary.Read(r, e, &u16), IsNil)
+	c.Check(u16, Equals, uint16(0))
+
+	// TCP Options
+	// First opttion
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 0-7
+	c.Check(u8, Equals, uint8(3))
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 8-15
+	c.Check(u8, Equals, uint8(3))
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 16-23
+	c.Check(u8, Equals, uint8(128))
+	// TCP Option padding (ones)
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Check(u8, Equals, uint8(1))
+	// Second option
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Check(u8, Equals, uint8(4))
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Check(u8, Equals, uint8(2))
+	// TCP Header padding (zeroes)
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Check(u8, Equals, uint8(0))
+	c.Assert(binary.Read(r, e, &u8), IsNil) // 24-31
+	c.Check(u8, Equals, uint8(0))
+
+	//
+	// TEST TCP OPTION ERROR CONDITIONS
+	//
+
+	//
+	// TCPOptionaDataTooLong
+	//
+	t.SetUpTest(c) // reset!
+
+	optSlice = make(packets.TCPOptionSlice, 0)
+
+	failTestData := make([]byte, 256)
+
+	for i := range failTestData {
+		failTestData[i] = byte(0)
+	}
+
+	opt = &packets.TCPOption{
+		Kind:   3,
+		Length: 3,
+		Data:   failTestData,
+	}
+
+	optSlice = append(optSlice, opt)
+
+	t.t.Options = optSlice
+
+	data, err = t.t.Marshal()
+	c.Assert(err, Not(IsNil))
+	c.Assert(data, IsNil)
+
+	switch err.(type) {
+	case packets.TCPOptionDataTooLong:
+		c.Check(err.Error(), Equals, "Option 0 Data cannot be larger than 253 bytes")
+	default:
+		c.Fatal("error type should be packets.TCPOptionDataTooLarge")
+	}
+
+	//
+	// TCPOptionaDataTooLong
+	//
+
+	optSlice = make(packets.TCPOptionSlice, 0)
+
+	failTestData = make([]byte, 253)
+
+	for i := range failTestData {
+		failTestData[i] = byte(0)
+	}
+
+	opt = &packets.TCPOption{
+		Kind:   3,
+		Length: 3,
+		Data:   failTestData,
+	}
+
+	optSlice = append(optSlice, opt)
+
+	t.t.Options = optSlice
+	data, err = t.t.Marshal()
+	c.Assert(err, Not(IsNil))
+	c.Assert(data, IsNil)
+
+	switch err.(type) {
+	case packets.TCPOptionDataInvalid:
+		c.Check(err.Error(), Equals, "Option 0 Length doesn't match length of data")
+	default:
+		c.Fatal("error type should be packets.TCPOptionDataInvalid")
+	}
 }
 
 func (t *TestSuite) TestMarshalWithChecksum(c *C) {
@@ -386,7 +596,7 @@ func (t *TestSuite) TestMarshalWithChecksum(c *C) {
 	c.Check(data, IsNil)
 
 	switch err.(type) {
-	case packets.DataOffsetInvalid:
+	case packets.TCPDataOffsetInvalid:
 		c.Check(err.Error(), Equals, "DataOffset field must be at least 5 and no more than 15")
 	default:
 		c.Fatalf("Unexpected error type! Should be packets.DataOffset was '%s'", reflect.TypeOf(err).String())
