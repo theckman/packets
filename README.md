@@ -2,7 +2,7 @@
 [![TravisCI Build Status](https://img.shields.io/travis/theckman/packets/master.svg?style=flat)](https://travis-ci.org/theckman/packets)
 [![GoDoc](https://img.shields.io/badge/godspeed-GoDoc-blue.svg?style=flat)](https://godoc.org/github.com/theckman/packets)
 
-A library for crafting your own packets.
+A library for crafting your own packets. Until this README is filled in with some examples, check out [GoDoc](https://godoc.org/github.com/theckman/packets) for info on how to consume this package.
 
 ## License
 
