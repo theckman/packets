@@ -355,6 +355,9 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 		}
 	}
 
+	// determine how large the tcp.DataOffset field should be by diving the length
+	// of the whole TCP header by 4 (4 bytes [32-bits]) and getting the ceiling of
+	// that value
 	dataOffsetSize := uint8(math.Ceil(float64(tcpHeaderMinSize+len(optBytes)) / 4))
 
 	// if the field is the type's default, and an obviously invalid value
