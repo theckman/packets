@@ -8,43 +8,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"reflect"
-	"testing"
 
 	"github.com/theckman/packets"
 	. "gopkg.in/check.v1"
 )
-
-var Te = binary.BigEndian
-
-type TestSuite struct {
-	t *packets.TCPHeader
-}
-
-var _ = Suite(&TestSuite{})
-
-func Test(t *testing.T) { TestingT(t) }
-
-func (t *TestSuite) SetUpTest(c *C) {
-	t.t = &packets.TCPHeader{
-		SourcePort:      44273,
-		DestinationPort: 22,
-		SeqNum:          42,
-		AckNum:          0,
-		Reserved:        0,
-		NS:              false,
-		CWR:             false,
-		ECE:             false,
-		URG:             false,
-		ACK:             false,
-		PSH:             true,
-		RST:             false,
-		SYN:             true,
-		FIN:             false,
-		WindowSize:      43690,
-		Checksum:        0,
-		UrgentPointer:   0,
-	}
-}
 
 func (t *TestSuite) TestTCPOptionSlice_Marshal(c *C) {
 	var data []byte
@@ -291,41 +258,6 @@ func (t *TestSuite) TestUnmarshalTCPHeader(c *C) {
 	c.Check(header.Options[1].Kind, Equals, uint8(4))
 	c.Check(header.Options[1].Length, Equals, uint8(2))
 	c.Check(len(header.Options[1].Data), Equals, 0)
-}
-
-func (t *TestSuite) TestChecksumIPv4(c *C) {
-	var csum uint16
-
-	rawBytes := new(bytes.Buffer)
-
-	// Source Port
-	binary.Write(rawBytes, Te, uint16(44273))
-	// Destination Port
-	binary.Write(rawBytes, Te, uint16(22))
-	// TCP Sequence Number
-	binary.Write(rawBytes, Te, uint32(42))
-	// Acknowledgement number
-	binary.Write(rawBytes, Te, uint32(0))
-
-	// Data offset (4 bits), Reserved (3 bits), NS, CWR, ECE,
-	// URG, ACK,
-	mix := uint16(5)<<12 | // Data Offset (4 bits)
-		uint16(0)<<9 | // Reserved (3 bits)
-		uint16(0)<<6 | // ECN (3 bits)
-		uint16(8) | // PSH (1 bit)
-		uint16(2) // SYN (1 bit)
-
-	binary.Write(rawBytes, Te, mix)
-
-	// Window Size
-	binary.Write(rawBytes, Te, uint16(43690))
-	// Checksum
-	binary.Write(rawBytes, Te, uint16(0))
-	// Urgent
-	binary.Write(rawBytes, Te, uint16(0))
-
-	csum = packets.ChecksumIPv4(rawBytes.Bytes(), "127.0.0.1", "127.0.0.2")
-	c.Check(csum, Equals, uint16(0xfb59))
 }
 
 func (t *TestSuite) TestTCPHeader_Marshal(c *C) {

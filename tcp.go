@@ -96,7 +96,8 @@ func UnmarshalTCPHeader(data []byte) (*TCPHeader, error) {
 // However, if the *TCPHeader instance has the Checksum field set, it will be
 // included in the marshaled data.
 //
-// The error field may be of DataOffsetInvalid or DataOffsetTooSmall types. See
+// The error field may be of ErrTCPDataOffsetInvalid, ErrTCPDataOffsetTooSmall,
+// ErrTCPOptionDataTooLong, or ErrTCPOptionDataInvalid types. See
 // their documentation for more information.
 func (tcp *TCPHeader) Marshal() ([]byte, error) {
 	return tcp.marshalTCPHeader()
@@ -107,9 +108,10 @@ func (tcp *TCPHeader) Marshal() ([]byte, error) {
 // the TCP checksum and adds it to the header / marshaled data.
 //
 // It's suggested that you use Marshal() instead and offload the
-// checksumming to your kernel (which should do it automatically if not present).
+// checksumming to your kernel (which should do it automatically if field is zero).
 //
-// The error field may be of DataOffsetInvalid or DataOffsetTooSmall types. See
+// The error field may be of ErrTCPDataOffsetInvalid, ErrTCPDataOffsetTooSmall,
+// ErrTCPOptionDataTooLong, or ErrTCPOptionDataInvalid types. See
 // their documentation for more information.
 func (tcp *TCPHeader) MarshalWithChecksum(laddr, raddr string) ([]byte, error) {
 	// marshal the header
@@ -120,7 +122,12 @@ func (tcp *TCPHeader) MarshalWithChecksum(laddr, raddr string) ([]byte, error) {
 	}
 
 	// calculate the checksum using the data that was marshaled
-	tcp.Checksum = ChecksumIPv4(data, laddr, raddr)
+	csum, err := ChecksumIPv4(data, "tcp", laddr, raddr)
+	if err != nil {
+		return nil, err
+	}
+
+	tcp.Checksum = csum
 
 	// remarshal again, with a proper Checksum this time
 	fullData, err := tcp.marshalTCPHeader()
@@ -248,49 +255,6 @@ func (tcpos TCPOptionSlice) Marshal() ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
-}
-
-// ChecksumIPv4 is a function for computing the TCP checksum of an IPv4 packet.
-func ChecksumIPv4(data []byte, laddr, raddr string) uint16 {
-	// convert the IP address strings to their byte equivalents
-	srcBytes, dstBytes := ipv4AddrToBytes(laddr), ipv4AddrToBytes(raddr)
-
-	// create a pseudo header for the packet checksumming
-	pHeader := new(bytes.Buffer)
-
-	binary.Write(pHeader, binary.BigEndian, srcBytes[0])
-	binary.Write(pHeader, binary.BigEndian, srcBytes[1])
-	binary.Write(pHeader, binary.BigEndian, srcBytes[2])
-	binary.Write(pHeader, binary.BigEndian, srcBytes[3])
-	binary.Write(pHeader, binary.BigEndian, dstBytes[0])
-	binary.Write(pHeader, binary.BigEndian, dstBytes[1])
-	binary.Write(pHeader, binary.BigEndian, dstBytes[2])
-	binary.Write(pHeader, binary.BigEndian, dstBytes[3])
-	binary.Write(pHeader, binary.BigEndian, uint8(0))
-	binary.Write(pHeader, binary.BigEndian, uint8(6))
-	binary.Write(pHeader, binary.BigEndian, uint16(len(data)))
-	pHeader.Write(data)
-
-	return checksum(pHeader.Bytes())
-}
-
-func checksum(data []byte) uint16 {
-	dataSize := len(data) - 1
-
-	var sum uint32
-
-	for i := 0; i+1 < dataSize; i += 2 {
-		sum += uint32(data[i+1])<<8 | uint32(data[i])
-	}
-
-	if dataSize&1 == 1 {
-		sum += uint32(data[dataSize])
-	}
-
-	sum = sum>>16 + sum&0xffff
-	sum = sum + sum>>16
-
-	return ^uint16(sum)
 }
 
 // ipv4AddrToBytes converts an IPv4 address to its four individual pieces in bytes
