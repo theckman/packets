@@ -58,3 +58,23 @@ type ErrTCPOptionDataTooLong struct {
 func (e ErrTCPOptionDataTooLong) Error() string {
 	return e.E
 }
+
+// ErrUDPPayloadTooLarge is a type that implements the error interface. It's used for errors
+// marshaling the UDPHeader data. Specifically, this is use for when the UDP payload is too large.
+type ErrUDPPayloadTooLarge struct {
+	E string
+}
+
+func (e ErrUDPPayloadTooLarge) Error() string {
+	return e.E
+}
+
+// ErrChecksumInvalidKind is a type that implements the error interface. It's used when
+// an invalid packet kind is provided to the ChecksumIPv4 function.
+type ErrChecksumInvalidKind struct {
+	E string
+}
+
+func (e ErrChecksumInvalidKind) Error() string {
+	return e.E
+}
