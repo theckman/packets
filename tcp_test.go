@@ -10,6 +10,7 @@ import (
 	"reflect"
 
 	"github.com/theckman/packets"
+	"github.com/theckman/packets/err"
 	. "gopkg.in/check.v1"
 )
 
@@ -65,7 +66,7 @@ func (t *TestSuite) TestTCPOptionSlice_Marshal(c *C) {
 	c.Check(u8, Equals, uint8(2))
 
 	//
-	// TEST ErrTCPOptionDataTooLong
+	// TEST packetserr.TCPOptionDataTooLong condition
 	//
 
 	optSlice = make(packets.TCPOptionSlice, 0)
@@ -89,15 +90,15 @@ func (t *TestSuite) TestTCPOptionSlice_Marshal(c *C) {
 	c.Assert(data, IsNil)
 
 	switch err.(type) {
-	case packets.ErrTCPOptionDataTooLong:
-		c.Check(err.(packets.ErrTCPOptionDataTooLong).Index, Equals, 0)
+	case packetserr.TCPOptionDataTooLong:
+		c.Check(err.(packetserr.TCPOptionDataTooLong).Index, Equals, 0)
 		c.Check(err.Error(), Equals, "Option 0 Data cannot be larger than 253 bytes")
 	default:
-		c.Fatalf("error type should be packets.ErrTCPOptionDataTooLarge was %s", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packetserr.TCPOptionDataTooLarge was %s", reflect.TypeOf(err).String())
 	}
 
 	//
-	// TEST ErrTCPOptionDataInvalid
+	// TEST packetserr.TCPOptionDataInvalid condition
 	//
 
 	optSlice[0].Data = make([]byte, 0)
@@ -107,11 +108,11 @@ func (t *TestSuite) TestTCPOptionSlice_Marshal(c *C) {
 	c.Assert(data, IsNil)
 
 	switch err.(type) {
-	case packets.ErrTCPOptionDataInvalid:
-		c.Check(err.(packets.ErrTCPOptionDataInvalid).Index, Equals, 0)
+	case packetserr.TCPOptionDataInvalid:
+		c.Check(err.(packetserr.TCPOptionDataInvalid).Index, Equals, 0)
 		c.Check(err.Error(), Equals, "Option 0 Length doesn't match length of data")
 	default:
-		c.Fatalf("error type should be packets.ErrTCPOptionDataInvalid was %s", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packetserr.TCPOptionDataInvalid was %s", reflect.TypeOf(err).String())
 	}
 }
 
@@ -494,7 +495,7 @@ func (t *TestSuite) TestTCPHeader_Marshal(c *C) {
 	//
 
 	//
-	// ErrTCPOptionaDataTooLong
+	// packetserr.TCPOptionaDataTooLong
 	//
 	t.SetUpTest(c) // reset!
 
@@ -521,15 +522,15 @@ func (t *TestSuite) TestTCPHeader_Marshal(c *C) {
 	c.Assert(data, IsNil)
 
 	switch err.(type) {
-	case packets.ErrTCPOptionDataTooLong:
-		c.Check(err.(packets.ErrTCPOptionDataTooLong).Index, Equals, 0)
+	case packetserr.TCPOptionDataTooLong:
+		c.Check(err.(packetserr.TCPOptionDataTooLong).Index, Equals, 0)
 		c.Check(err.Error(), Equals, "Option 0 Data cannot be larger than 253 bytes")
 	default:
-		c.Fatalf("error type should be packets.ErrTCPOptionDataTooLarge was %s", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packetserr.TCPOptionDataTooLarge was %s", reflect.TypeOf(err).String())
 	}
 
 	//
-	// ErrTCPOptionaDataTooLong
+	// packetserr.TCPOptionaDataTooLong
 	//
 	optSlice = make(packets.TCPOptionSlice, 0)
 
@@ -553,15 +554,15 @@ func (t *TestSuite) TestTCPHeader_Marshal(c *C) {
 	c.Assert(data, IsNil)
 
 	switch err.(type) {
-	case packets.ErrTCPOptionDataInvalid:
-		c.Check(err.(packets.ErrTCPOptionDataInvalid).Index, Equals, 0)
+	case packetserr.TCPOptionDataInvalid:
+		c.Check(err.(packetserr.TCPOptionDataInvalid).Index, Equals, 0)
 		c.Check(err.Error(), Equals, "Option 0 Length doesn't match length of data")
 	default:
-		c.Fatalf("error type should be packets.ErrTCPOptionDataInvalid was %s", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packetserr.TCPOptionDataInvalid was %s", reflect.TypeOf(err).String())
 	}
 
 	//
-	// ErrTCPOptionsOverflow
+	// packetserr.TCPOptionsOverflow
 	//
 	optSlice = make(packets.TCPOptionSlice, 4)
 
@@ -585,11 +586,11 @@ func (t *TestSuite) TestTCPHeader_Marshal(c *C) {
 	c.Assert(data, IsNil)
 
 	switch err.(type) {
-	case packets.ErrTCPOptionsOverflow:
-		c.Check(err.(packets.ErrTCPOptionsOverflow).MaxSize, Equals, 40)
+	case packetserr.TCPOptionsOverflow:
+		c.Check(err.(packetserr.TCPOptionsOverflow).MaxSize, Equals, 40)
 		c.Check(err.Error(), Equals, "TCP Options are too large, must be less than 40 total bytes")
 	default:
-		c.Fatalf("error type should be packets.ErrTCPOptionsOverflow was %s", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packetserr.TCPOptionsOverflow was %s", reflect.TypeOf(err).String())
 	}
 
 	//
@@ -616,11 +617,11 @@ func (t *TestSuite) TestTCPHeader_Marshal(c *C) {
 	c.Assert(data, IsNil)
 
 	switch err.(type) {
-	case packets.ErrTCPDataOffsetTooSmall:
-		c.Check(err.(packets.ErrTCPDataOffsetTooSmall).ExpectedSize, Equals, uint8(6))
+	case packetserr.TCPDataOffsetTooSmall:
+		c.Check(err.(packetserr.TCPDataOffsetTooSmall).ExpectedSize, Equals, uint8(6))
 		c.Check(err.Error(), Equals, "The DataOffset field is too small for the data provided. It should be at least 6")
 	default:
-		c.Fatalf("error type should be packets.ErrTCPDataOffsetTooSmall type was %s", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packetserr.TCPDataOffsetTooSmall type was %s", reflect.TypeOf(err).String())
 	}
 }
 
@@ -745,7 +746,7 @@ func (t *TestSuite) TestTCPHeader_MarshalWithChecksum(c *C) {
 	data, err = t.t.MarshalWithChecksum("127.0.0.1", "127.0.0.2")
 	c.Assert(err, Not(IsNil))
 	c.Check(data, IsNil)
-	c.Check(err, Equals, packets.ErrTCPDataOffsetInvalid)
+	c.Check(err, Equals, packetserr.TCPDataOffsetInvalid)
 
 	//
 	// TEST WHEN WindowSize IS ZERO

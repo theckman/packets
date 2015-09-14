@@ -10,6 +10,7 @@ import (
 	"reflect"
 
 	"github.com/theckman/packets"
+	"github.com/theckman/packets/err"
 	. "gopkg.in/check.v1"
 )
 
@@ -100,13 +101,13 @@ func (t *TestSuite) TestUDPHeader_Marshal(c *C) {
 	c.Check(data, IsNil)
 
 	switch err.(type) {
-	case packets.ErrUDPPayloadTooLarge:
-		e := err.(packets.ErrUDPPayloadTooLarge)
+	case packetserr.UDPPayloadTooLarge:
+		e := err.(packetserr.UDPPayloadTooLarge)
 		c.Check(e.MaxSize, Equals, 65527)
 		c.Check(e.Len, Equals, 65536)
 		c.Check(err.Error(), Equals, "UDP Payload must not be larger than 65527 byte, was 65536 bytes")
 	default:
-		c.Fatalf("error type should be packets.ErrUDPPayloadTooLarge was %s", reflect.TypeOf(err).String())
+		c.Fatalf("error type should be packetserr.UDPPayloadTooLarge was %s", reflect.TypeOf(err).String())
 	}
 }
 

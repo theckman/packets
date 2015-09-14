@@ -3,13 +3,15 @@ package packets
 import (
 	"bytes"
 	"encoding/binary"
+
+	"github.com/theckman/packets/err"
 )
 
 // ChecksumIPv4 is a function for computing the TCP checksum of an IPv4 packet. The kind
 // field is either 'tcp' or 'udp' and returns an error if invalid input is given.
 //
-// The returned error type may be ErrChecksumInvalidKind if an invalid kind field
-// is provided.
+// The returned error type may be packetserr.ChecksumInvalidKind if an invalid
+// kind field is provided.
 func ChecksumIPv4(data []byte, kind, laddr, raddr string) (uint16, error) {
 	// convert the IP address strings to their byte equivalents
 	srcBytes, dstBytes := ipv4AddrToBytes(laddr), ipv4AddrToBytes(raddr)
@@ -22,7 +24,7 @@ func ChecksumIPv4(data []byte, kind, laddr, raddr string) (uint16, error) {
 	case "udp", "UDP":
 		protocol = 17
 	default:
-		return 0, ErrChecksumInvalidKind
+		return 0, packetserr.ChecksumInvalidKind
 	}
 
 	// create a pseudo header for the packet checksumming

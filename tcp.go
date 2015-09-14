@@ -10,6 +10,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/theckman/packets/err"
 )
 
 // These are the control (CTRL) bits of the TCP header. We primarily use these
@@ -95,9 +97,9 @@ func UnmarshalTCPHeader(data []byte) (*TCPHeader, error) {
 // However, if the *TCPHeader instance has the Checksum field set, it will be
 // included in the marshaled data.
 //
-// The error field may be of ErrTCPDataOffsetInvalid, ErrTCPDataOffsetTooSmall,
-// ErrTCPOptionDataTooLong, or ErrTCPOptionDataInvalid types. See
-// their documentation for more information.
+// The error field may be of packetserr.TCPDataOffsetInvalid,
+// packetserr.TCPDataOffsetTooSmall, packetserr.TCPOptionDataTooLong, or
+// packetserr.TCPOptionDataInvalid types. See their documentation for more information.
 func (tcp *TCPHeader) Marshal() ([]byte, error) {
 	return tcp.marshalTCPHeader()
 }
@@ -109,9 +111,9 @@ func (tcp *TCPHeader) Marshal() ([]byte, error) {
 // It's suggested that you use Marshal() instead and offload the
 // checksumming to your kernel (which should do it automatically if field is zero).
 //
-// The error field may be of ErrTCPDataOffsetInvalid, ErrTCPDataOffsetTooSmall,
-// ErrTCPOptionDataTooLong, or ErrTCPOptionDataInvalid types. See
-// their documentation for more information.
+// The error field may be of packetserr.TCPDataOffsetInvalid,
+// packetserr.TCPDataOffsetTooSmall, packetserr.TCPOptionDataTooLong, or
+// packetserr.TCPOptionDataInvalid types. See their documentation for more information.
 func (tcp *TCPHeader) MarshalWithChecksum(laddr, raddr string) ([]byte, error) {
 	// marshal the header
 	data, err := tcp.marshalTCPHeader()
@@ -220,7 +222,7 @@ func (tcpos TCPOptionSlice) Marshal() ([]byte, error) {
 		default:
 			// make sure we're not going to overflow the uint8 Length field
 			if len(opt.Data)+2 > 255 {
-				return nil, ErrTCPOptionDataTooLong{Index: index}
+				return nil, packetserr.TCPOptionDataTooLong{Index: index}
 			}
 
 			// if the option's Length is zero: auto-calculate the value for that field
@@ -228,7 +230,7 @@ func (tcpos TCPOptionSlice) Marshal() ([]byte, error) {
 			if opt.Length == 0 {
 				opt.Length = uint8(len(opt.Data)) + 2
 			} else if uint8(len(opt.Data))+2 != opt.Length {
-				return nil, ErrTCPOptionDataInvalid{Index: index}
+				return nil, packetserr.TCPOptionDataInvalid{Index: index}
 			}
 
 			binary.Write(buf, binary.BigEndian, opt.Kind)
@@ -309,7 +311,7 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 	// if the calculated length of the options is too large
 	// return an error
 	if len(optBytes) > tcpOptsMaxSize {
-		return nil, ErrTCPOptionsOverflow{MaxSize: tcpOptsMaxSize}
+		return nil, packetserr.TCPOptionsOverflow{MaxSize: tcpOptsMaxSize}
 	}
 
 	// determine how large the tcp.DataOffset field should be by diving the length
@@ -326,7 +328,7 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 	// if the offset is outside of the acceptable range
 	// fail with a DataOffsetInvalid error
 	if tcp.DataOffset > 15 || tcp.DataOffset < 5 {
-		return nil, ErrTCPDataOffsetInvalid
+		return nil, packetserr.TCPDataOffsetInvalid
 	}
 
 	// if the WindowSize field is the default let's set it to something better
@@ -368,7 +370,7 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 
 	// DataOffset is too small for the amount of data in the header
 	if totalPad < 0 {
-		return nil, ErrTCPDataOffsetTooSmall{ExpectedSize: dataOffsetSize}
+		return nil, packetserr.TCPDataOffsetTooSmall{ExpectedSize: dataOffsetSize}
 	}
 
 	// pad the end of the packet with null bytes to the 32-bit boundary
