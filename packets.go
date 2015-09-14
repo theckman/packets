@@ -22,9 +22,7 @@ func ChecksumIPv4(data []byte, kind, laddr, raddr string) (uint16, error) {
 	case "udp", "UDP":
 		protocol = 17
 	default:
-		return 0, ErrChecksumInvalidKind{
-			E: "Checksum kind should either be 'tcp' OR 'udp'.",
-		}
+		return 0, ErrChecksumInvalidKind
 	}
 
 	// create a pseudo header for the packet checksumming

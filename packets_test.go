@@ -7,7 +7,6 @@ package packets_test
 import (
 	"bytes"
 	"encoding/binary"
-	"reflect"
 	"testing"
 
 	"github.com/theckman/packets"
@@ -130,11 +129,5 @@ func (t *TestSuite) TestChecksumIPv4(c *C) {
 	csum, err = packets.ChecksumIPv4(rawBytes.Bytes(), "invalid", "127.0.0.1", "127.0.0.2")
 	c.Assert(err, Not(IsNil))
 	c.Check(csum, Equals, uint16(0))
-
-	switch err.(type) {
-	case packets.ErrChecksumInvalidKind:
-		c.Check(err.Error(), Equals, "Checksum kind should either be 'tcp' OR 'udp'.")
-	default:
-		c.Fatalf("error type should be packets.ErrChecksumInvalidKind was %s", reflect.TypeOf(err).String())
-	}
+	c.Check(err, Equals, packets.ErrChecksumInvalidKind)
 }

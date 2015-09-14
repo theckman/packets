@@ -7,7 +7,6 @@ package packets
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 )
 
 const (
@@ -118,10 +117,8 @@ func (udp *UDPHeader) marshalUDPHeader() ([]byte, error) {
 
 	if packetSize > maxUint16 {
 		return nil, ErrUDPPayloadTooLarge{
-			E: fmt.Sprintf(
-				"UDP Payload must not be larger than %d byte, was %d bytes",
-				maxUint16-udpHeaderLen, len(udp.Payload),
-			),
+			MaxSize: maxUint16 - udpHeaderLen,
+			Len:     len(udp.Payload),
 		}
 	}
 
