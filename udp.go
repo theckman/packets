@@ -7,6 +7,8 @@ package packets
 import (
 	"bytes"
 	"encoding/binary"
+
+	"github.com/theckman/packets/err"
 )
 
 const (
@@ -116,7 +118,7 @@ func (udp *UDPHeader) marshalUDPHeader() ([]byte, error) {
 	packetSize := len(udp.Payload) + udpHeaderLen
 
 	if packetSize > maxUint16 {
-		return nil, ErrUDPPayloadTooLarge{
+		return nil, packetserr.UDPPayloadTooLarge{
 			MaxSize: maxUint16 - udpHeaderLen,
 			Len:     len(udp.Payload),
 		}

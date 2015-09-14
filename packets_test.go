@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/theckman/packets"
+	"github.com/theckman/packets/err"
 	. "gopkg.in/check.v1"
 )
 
@@ -129,5 +130,5 @@ func (t *TestSuite) TestChecksumIPv4(c *C) {
 	csum, err = packets.ChecksumIPv4(rawBytes.Bytes(), "invalid", "127.0.0.1", "127.0.0.2")
 	c.Assert(err, Not(IsNil))
 	c.Check(csum, Equals, uint16(0))
-	c.Check(err, Equals, packets.ErrChecksumInvalidKind)
+	c.Check(err, Equals, packetserr.ChecksumInvalidKind)
 }
