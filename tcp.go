@@ -7,7 +7,6 @@ package packets
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -221,9 +220,7 @@ func (tcpos TCPOptionSlice) Marshal() ([]byte, error) {
 		default:
 			// make sure we're not going to overflow the uint8 Length field
 			if len(opt.Data)+2 > 255 {
-				return nil, ErrTCPOptionDataTooLong{
-					E: fmt.Sprintf("Option %d Data cannot be larger than 253 bytes", index),
-				}
+				return nil, ErrTCPOptionDataTooLong{Index: index}
 			}
 
 			// if the option's Length is zero: auto-calculate the value for that field
@@ -231,9 +228,7 @@ func (tcpos TCPOptionSlice) Marshal() ([]byte, error) {
 			if opt.Length == 0 {
 				opt.Length = uint8(len(opt.Data)) + 2
 			} else if uint8(len(opt.Data))+2 != opt.Length {
-				return nil, ErrTCPOptionDataInvalid{
-					E: fmt.Sprintf("Option %d Length doesn't match length of data", index),
-				}
+				return nil, ErrTCPOptionDataInvalid{Index: index}
 			}
 
 			binary.Write(buf, binary.BigEndian, opt.Kind)
@@ -314,9 +309,7 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 	// if the calculated length of the options is too large
 	// return an error
 	if len(optBytes) > tcpOptsMaxSize {
-		return nil, ErrTCPOptionsOverflow{
-			E: fmt.Sprintf("TCP Options are too large, must be less than %d total bytes", tcpOptsMaxSize),
-		}
+		return nil, ErrTCPOptionsOverflow{MaxSize: tcpOptsMaxSize}
 	}
 
 	// determine how large the tcp.DataOffset field should be by diving the length
@@ -333,9 +326,7 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 	// if the offset is outside of the acceptable range
 	// fail with a DataOffsetInvalid error
 	if tcp.DataOffset > 15 || tcp.DataOffset < 5 {
-		return nil, ErrTCPDataOffsetInvalid{
-			E: "DataOffset field must be at least 5 and no more than 15",
-		}
+		return nil, ErrTCPDataOffsetInvalid
 	}
 
 	// if the WindowSize field is the default let's set it to something better
@@ -377,12 +368,7 @@ func (tcp *TCPHeader) marshalTCPHeader() ([]byte, error) {
 
 	// DataOffset is too small for the amount of data in the header
 	if totalPad < 0 {
-		return nil, ErrTCPDataOffsetTooSmall{
-			E: fmt.Sprintf(
-				"The DataOffset field is too small for the data provided. It should be at least %d",
-				dataOffsetSize,
-			),
-		}
+		return nil, ErrTCPDataOffsetTooSmall{ExpectedSize: dataOffsetSize}
 	}
 
 	// pad the end of the packet with null bytes to the 32-bit boundary

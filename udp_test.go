@@ -7,6 +7,7 @@ package packets_test
 import (
 	"bytes"
 	"encoding/binary"
+	"reflect"
 
 	"github.com/theckman/packets"
 	. "gopkg.in/check.v1"
@@ -84,6 +85,29 @@ func (t *TestSuite) TestUDPHeader_Marshal(c *C) {
 	c.Check(u8, Equals, uint8(0))
 	c.Assert(binary.Read(r, Te, &u8), IsNil)
 	c.Check(u8, Equals, uint8(0))
+
+	//
+	// Test with a payload that is too large
+	//
+
+	t.u.Payload = make([]byte, int(^uint16(0))+1)
+	for i := range t.u.Payload {
+		t.u.Payload[i] = byte('a')
+	}
+
+	data, err = t.u.Marshal()
+	c.Assert(err, Not(IsNil))
+	c.Check(data, IsNil)
+
+	switch err.(type) {
+	case packets.ErrUDPPayloadTooLarge:
+		e := err.(packets.ErrUDPPayloadTooLarge)
+		c.Check(e.MaxSize, Equals, 65527)
+		c.Check(e.Len, Equals, 65536)
+		c.Check(err.Error(), Equals, "UDP Payload must not be larger than 65527 byte, was 65536 bytes")
+	default:
+		c.Fatalf("error type should be packets.ErrUDPPayloadTooLarge was %s", reflect.TypeOf(err).String())
+	}
 }
 
 func (t *TestSuite) TestUDPHeader_MarshalWithChecksum(c *C) {
